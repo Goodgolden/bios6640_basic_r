@@ -1,0 +1,218 @@
+---
+title: 'Lecture 1: Objects'
+author: "Katie Colborn"
+date: "August 29, 2019"
+output:
+  html_document: default
+  fig_caption: yes
+  number_sections: yes
+  pdf_document: default
+  word_document: default
+---
+**This lecture follows chapters 2 and 5 of "Hands-On Programming with R", by Garrett Grolemund**
+```{r, echo=F, warning=F, message=F}
+### don't worry about this code, you'll learn about it later
+op <- par()
+options(width=80)
+emptyenv()
+rm(list=ls())
+```
+
+#### The very basics of R objects
+Let's create a virtual die. We can use the `:` operator to generate a **vector**, or one-dimensional set of numbers between 1 and 6.
+
+```{r}
+1:6
+```
+
+Great, we created a vector, but unfortunately, it's just virtual. We didn't save it as an R *object*. How do we do that? We need to assign it to or store it inside an R object. Let's save the vector as an object with a name of our choice, like `a`.
+
+```{r}
+a <- 1:6
+a
+```
+
+Notice up to the right, we now have an `a` in the environment pane. This pane shows you all of the objects you have created since opening R. 
+
+R is quite flexible when it comes to naming objects, but there are a few rules. First, a name cannot start with a number. Second, a name cannot use special symbols, such as: `!`, `$`, `/`, `@`, etc. Also, R is case sensitive (unlike SAS), so `car` is a different object than `Car`. Finally, R will overwrite objects if you reassign things to them. See an example below.
+```{r}
+example <- 22
+example
+
+example <- 100
+example
+```
+
+To avoid this, you can either view the object names in the environment pane, or type `ls` to view the objects you have created.
+```{r}
+ls()
+```
+
+Let's do some math on this object. R uses *element-wise execution*, in other words, it will apply the same operation to each element in the set. For example, when you run `a-2`, R subtracts one from each element of `a`.
+```{r}
+a-2
+```
+
+When you use two or more vectors in an operation, R will line up the vectors and multiply the respective elements in each. In the example below, `a*a` takes `1*1`, `2*2`, `3*3`, and so forth, and returns the result, which is a vector the same length as `a`.
+```{r}
+a*a
+```
+
+Element-wise operations are very useful. When you start working with data sets, element-wise operations will ensure that values from one observation are only paired with values from the same observation. However, you can still do matrix multiplication. For example, inner multiplication can be done with the `*%*` operator and outer multiplication with the `%o%`.
+```{r}
+a%*%a
+
+a%o%a
+```
+
+### Chaper 5: R Objects
+Let's follow the example from the book and create a data set that is like a deck of cards. This exercise will show you how R stores data and how you can assemble and disassemble your own data sets. 
+
+#### 5.1. Atomic Vectors
+An atomic vector is a simple vector of data. This vector can contain multiple pieces of data or just one. To create a vector of multiple elements, use `c`, which stands for concatenate.
+```{r}
+five <- 5
+
+class(five)
+
+is.vector(five)
+length(five)
+```
+
+An atomic vector is one-dimensional and can contain only one type of data. R has six basic types of atomic vectors: *doubles, integers, characters, logicals, complex,* and *raw*.
+
+You can create an integer vector using `L` following a number and `""` to create a character string.
+```{r}
+int <- 1L
+text <- "ace"
+```
+
+To create an atomic vector with multiple elements, as mentioned above, we use `c`.
+```{r}
+int <- c(1L, 5L)
+text <- c("ace", "hearts")
+```
+
+##### 5.1.1. Atomic vector types
+Thre are six atomic vector types: doubles, integers, characters, logicals, complex and raw. 
+
+- *Doubles*: R saves numbers as doubles by default. This saves memory but does not store decimals to exact values. The rounding is largely unnoticed. In general, it's ok to save numbers as doubles, but integers are an option (described below).
+- *Characters*: these are flexible for information storage and manipulation (or searching). Use quotes to create them.
+- *Logicals*: these consist of `TRUE` and `FALSE` values. This is R's version of Boolean data. They are helpful for comparisons or when you want to ask R a question (like `is.na()` - more on that later).
+- *Complex* and *Raw*: these are rarely used, so I won't go into them, but you can read about them in the textbook.
+```{r}
+### A double:
+die <- c(1, 2, 3, 4, 5, 6)
+typeof(die)
+
+### An integer:
+int <- c(-1L, 2L, 4L)
+typeof(int)
+
+### A character:
+text <- c("Hello", "World")
+typeof(text)
+
+### A logical:
+logic <- c(TRUE, FALSE, TRUE)
+typeof(logic)
+```
+
+#### 5.2 Attributes
+Think of an attribute as metadata - it attaches to the object but is not displayed. Most common attributes are names, dimensions and classes. 
+```{r}
+names(die)
+```
+
+Above, because `die` does not have any attributes (or names), R returned `NULL`. Let's create some names for die.
+```{r}
+names(die) <- c("one", "two", "three", "four", "five", "six")
+names(die)
+attributes(die)
+die
+```
+
+If you'd like to remove the names attribute, set it to `NULL`.
+```{r}
+names(die) <- NULL
+die
+```
+
+To give an atomic vector dimensions, we can use the `dim` function. Let's make the die vector a 2x3 matrix.
+```{r}
+dim(die) <- c(2,3)
+die
+```
+
+#### 5.3 Matrices
+Matrices store values in 2-dimensional arrays. To create a matrix, supply the `matrix` function with an atomic vector and reorganize it into a matrix. 
+```{r}
+m <- matrix(die, nrow = 2)
+m
+```
+
+By default, it will fill the matrix column by column. You can fill it row by row using the following:
+```{r}
+m <- matrix(die, nrow = 2, byrow = TRUE)
+```
+
+#### 5.4 Arrays
+An array allows you to create n-dimensions, not just two.
+```{r}
+ar <- array(c(11:14, 21:24, 31:34), dim = c(2,2,3))
+ar
+```
+
+#### 5.5 Class
+When you change the dimension of an atomic vector, the type does not change but the class does. To ask for an object's class, we can use the `class` function.
+```{r}
+dim(die) <- c(2,3)
+typeof(die)
+
+class(die)
+```
+
+Factors: factors are a way of storing categorical information. Think of it like a character vector except that it only allows for certain categories to be included. By default, when you load data into R, it classifies all vectors of strings to factors. To supress this, use `stringsAsFactors = F` when loading data (more on this when you learn about `read.csv` and other ways of loading data into R).
+```{r}
+gender <- factor(c("male", "female", "female", "male"))
+
+typeof(gender)
+attributes(gender)
+```
+
+#### 5.6 Coercion
+R's rules for coercion are simple: 1) if anything in a vector is character, the entire vector becomes character; 2) if a vector contains logicals and numbers, R will convert the logicals to numbers. You can also coerce values to different types, but `NA`'s can be produced as a result. 
+```{r}
+i <- c("1A", 2, 3, 4, 5)
+i
+typeof(i)
+
+as.numeric(i)
+```
+
+Notice that the "1A" above was determined to be NA because R did not know how to convert it to numeric. Sometimes you'll have data that are messy, and this behaviour can be helpful. However, it can also be tedious to consider which values in a vector are completely wrong or just somewhat wrong. One might have thought that the "1A" should just be "1". Without being able to go back to the original data source, it's safer to assume it's missing. But what if someone typed "one" and the rest of the vector was numeric. Later on, you'll learn how to modify vector values (rather than simply modifying the entire vector).
+
+#### 5.7 Lists
+Lists group together R objects, such as atomic vectors and lists. The objects is the list do not need to be the same types. Use the `list` function to create a new list.
+```{r}
+list1 <- list(100:130, "R", list(TRUE, FALSE))
+list1
+
+```
+
+Lists have elements and subelements, and these are denoted with the bracketed numbers. Above, the set of numbers between 100-130 is the first element, and the first subelement of that is 100. Similarly, the third element is the logical vector, and the second subelement of that is `FALSE`.
+
+#### 5.8 Data frames
+Data frames are the two-dimensional version of a list. This is R's equivalent to an Excel spreadsheet. They are two-dimensional tables with different types of vectors. You can create a data frame or read in a data table and generate a data frame. Let's first create one, and in future lectures you will learn to read in different types of data frames.
+```{r}
+df <- data.frame(face = c("ace", "two", "six"), suit = c("clubs", "clubs", "clubs"), value = c(1, 2, 3))
+df
+
+typeof(df)
+class(df)
+str(df)
+
+### Let's make sure the strings are character, not factors
+df <- data.frame(face = c("ace", "two", "six"), suit = c("clubs", "clubs", "clubs"), value = c(1, 2, 3), stringsAsFactors = F)
+str(df)
+```

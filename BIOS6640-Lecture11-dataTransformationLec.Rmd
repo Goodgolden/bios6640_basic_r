@@ -1,0 +1,157 @@
+---
+title: 'Data Transformation lecture'
+author: "Debashis Ghosh"
+date: "October 22, 2019"
+output:
+  html_document: default
+  fig_caption: yes
+  number_sections: yes
+  pdf_document: default
+  word_document: default
+---
+#### This lecture covers data transformations. Very often we will need to create new variables, summarize or aggregate data, or perform some other transformation of the data before we can analyze it. We've discussed the apply family of functions in base R, which are very helpful for performing transformations. Today, we will manipulate data using the `dplyr ` package. This material is based on *R for Data Science*, Chapter 5.  Note: we are also making use of Chapter 5 of the wonderful website stat545.com.  
+
+##### We will use the `dplyr` package from `tidyverse`. 
+```{r, echo=T, message=F, warning=F}
+#install.packages("tidyverse", dependencies = T)
+library(tidyverse)
+```
+
+##### I will also use data from Gapminder at https://www.gapminder.org/data/.
+```{r, echo=F, message=F, warning=F}
+install.packages("gapminder")
+library(gapminder)
+```
+
+##### Some basic functions:
+* `(head())`, to view the first part of the file
+* `(summary())`, to give summary statistics for numerical variables and tabulations for categorical variables.
+```{r, echo=F, message=F, warning=F}
+head(gapminder)
+summary(gapminder)
+typeof(gapminder)
+table(gapminder$country)
+```
+
+##### The five key `dplyr` functions that allow you to solve the vast majority of your data manipulation challenges are:
+
+* `(filter())`, similar to subsetting
+* Reorder the rows `(arrange())`
+* Pick variables by their names `(select())`
+* Create new variables with functions of existing variables `(mutate())`
+* Similar to aggregate: `(summarise())`
+
+##### These can all be used with `group_by()` to perform manipulations of the data by groups.
+
+#### **Filter**
+###### Let's subset the gapminder data by year.
+```{r, echo=T, message=T, warning=T}
+gapminder[gapminder$year==1967,]
+?filter
+head(filter(gapminder, year==1967))
+```
+###### We can print and save this simultaneously.
+```{r, echo=T, message=T, warning=T}
+# I won't print this because the dataframe is large, but just adding parentheses around the assignment prints the object.
+
+gapm1967 <- filter(gapminder, year == 1967)
+```
+
+##### Comparisons and logical operators
+###### Common comparisons in R: `>=`, `<=`, `==` (equal), `!=` (not equal). We can specify multiple filters using Boolean operators "and", `&`, and "or", `|`. Below are two different ways to subset gapminder for three years (1967, 1972, 1977). Notice the first uses Boolean operators but is long. The second is a short-hand version.
+```{r, echo=T, message=T, warning=T}
+# Long version
+first <- filter(gapminder,year == 1967 | year == 1972 | year == 1977)
+# Check ourselves:
+table(first$year)
+# Short version
+second <- filter(gapminder, year %in% c(1967,1972,1977))
+# Check ourselves again:
+table(second$year)
+```
+
+###### `filter()` is convenient, as compared to `subset`, because it is set up to receive multiple filters without specifying `&`, but keep in mind that one can write the conditions various ways (as shown above and below). Here's an example where we use two filter conditions, which are actually the same.
+```{r, echo=T, message=T, warning=T}
+t1 <- filter(gapminder, !(pop >= 5e+06| gdpPercap < 5000))
+dim(t1)
+t2 <- filter(gapminder, pop < 5e+06, gdpPercap > 5000)
+dim(t2)
+```
+
+###### A quick note on `NA` ("not available") values. Recall we cannot ask if something is `=` to `NA`, we need to ask: `is.na()`.
+
+#### **Arrange**
+##### `arrange()` is used to order data. In base R, we can also use `order`. Let's order the gapminder data by GDP per capita and year.
+```{r, echo=T, message=T, warning=T}
+ordgapm <- arrange(gapminder,gdpPercap,year)
+head(ordgapm)
+?arrange
+```
+
+###### We can also sort the columns in descending order using `desc()`.
+```{r, echo=T, message=T, warning=T}
+ord2gapm <- arrange(gapminder, desc(gdpPercap), desc(lifeExp))
+head(ord2gapm)
+
+```
+
+#### **Select**
+##### `select()` permits us to reduce the number of columns of a dataframe to the ones we are interested in. We've already done this using base R functions, like `subset` and `[]`. `select()` is actually easier, and I'll show you examples to support this.
+```{r, echo=T, message=T, warning=T}
+# Select columns by name.
+select(gapminder, year,lifeExp, gdpPercap)
+
+# Select columns in a range.
+select(gapminder, country:lifeExp, gdpPercap)
+select(gapminder, country:gdpPercap, -lifeExp)
+select(gapminder, starts_with("c"))
+select(gapminder, ends_with("y"))
+select(gapminder, contains("if"))
+select(gapminder, matches("(.)\\1"))
+select(gapminder, num_range("x", 1:3))
+```
+
+##### There are a number of helper functions you can use within select():
+### pattern matching
+* starts_with("abc"): matches names that begin with “abc”.
+* ends_with("xyz"): matches names that end with “xyz”.
+* contains("ijk"): matches names that contain “ijk”.
+* matches("(.)\\1"): selects variables that match a regular expression. This one matches any variables that contain repeated characters. You’ll learn more about regular expressions in strings.
+* num_range("x", 1:3): matches x1, x2 and x3.
+
+##### You can use `select()` to change variable names, but it's not useful because all other columns are dropped in the process. Instead use `rename`. 
+```{r, echo=T, message=T, warning=T}
+rename(gapminder, gdppc = gdpPercap)
+```
+
+
+##### Let's do some basic plots
+```{r, echo=T, message=T, warning=T}
+plot(lifeExp ~ year, gapminder)
+```
+```{r, echo=T, message=T, warning=T}
+plot(lifeExp ~ gdpPercap, gapminder)
+plot(gapminder$gdpPercap, gapminder$lifeExp)
+```
+```{r, echo=T, message=T, warning=T}
+plot(lifeExp ~ log(gdpPercap), gapminder)
+```
+##### Some other basic descriptives
+
+```{r, echo=T, message=T, warning=T}
+barplot(table(gapminder$continent))
+```
+
+## we exploit the fact that ggplot2 was installed and loaded via the tidyverse
+```{r, echo=T, message=T, warning=T}
+p <- ggplot(filter(gapminder, continent != "Oceania"),
+            aes(x = gdpPercap, y = lifeExp)) # just initializes
+p <- p + scale_x_log10() # log the x axis the right way
+p + geom_point() # scatterplot
+p + geom_point(aes(color = continent)) # map continent to color
+p + geom_point(alpha = (1/3), size = 3) + geom_smooth(lwd = 3, se = FALSE)
+#> `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
+p + geom_point(alpha = (1/3), size = 3)+ 
+  facet_wrap(~ continent)+ 
+  geom_smooth(lwd = 1.5, se = FALSE)
+```

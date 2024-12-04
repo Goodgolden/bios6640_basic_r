@@ -1,0 +1,143 @@
+---
+title: "Spatial Statistics, Part 1"
+author: "Debashis Ghosh"
+date: "11/18/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##### Spatial data represent a special type of data in which points can be represented in a 2-dimensional of 3-dimensional spatial grid.  Examples of spatial datasets abound in many disciplines, including economics, ecology, geology and biomedical research.   
+
+
+
+##### There are many R packages available for handling spatial data, but the main one we will be using in this class is called spatstat.   It has been around in various forms for over twenty years, making it one of the longest-running software packages.   The main developer of the package is Adrian Baddeley, who is a statistician in Australia.   
+
+
+
+##### We'll be looking at two types of data in spatial statistics.  The first is called *point pattern* data, which refers to the locations of the observations.   The second type of data are called *marks*, which refers to measurements associated with the units in the spatial dataset (Note: we can also think of them as covariates).
+
+
+
+##### As a flashback to old lectures in R, we have to remind ourselves what types of objects are available in spatstat.  Here are two we will need:
+
+
+
+##### ppp - planar point pattern: A planar point pattern dataset is represented in spatstat by an object of class ``ppp''.  The essential components of the point pattern object are the coordinates of the points in the pattern and (crucially!) the observation window.   
+
+
+##### owin - observation window: An observation window is an object of class ``owin'' which represents a specified region of space.   It is often used to designate the region inside which a point pattern has been recorded, or the spatial region inside which the points are constrained to lie.   
+
+##### spatstat supports a variety of other data objects, but we will not use those for now.   
+
+#### Example: CDPHE health facilities dataset
+```{r, echo=T,message=T,warning=F}
+#install.packages("spatstat")
+library(spatstat)
+# Note: you have to specify the proper directory 
+# for the health facilities data
+bbx <- owin(xrange=range(hfac$Longitude),yrange=range(hfac$Latitude))
+X <- ppp(hfac$Longitude,hfac$Latitude,window=bbx)
+plot(X)
+X
+```
+##### Marks: marks are data that accompany the spatial location.  In this dataset, facility type would be an example of a mark.   
+
+```{r, echo=T,message=T,warning=F}
+table(hfac$FACTYPE) ### unstandardized dataset
+```
+
+##### There are lots of facility types, so let's (grossly) simplify by converting into HCA licensed versus not. 
+```{r, echo=T,message=T,warning=F}
+n <- dim(hfac)[[1]]; n
+hca <- rep(0,n)
+tmp <- grep("HCA license",hfac$FACTYPE)
+### grep pattern matching and replacement
+head(tmp)
+hca[tmp] <- 1
+hca <- factor(hca); head(hca)
+X.m <- ppp(hfac$Longitude,hfac$Latitude,window=bbx,marks=hca)
+plot(X.m)
+```
+##### Some basic concepts
+
+##### Point process: a random mechanism whose outcomes are point patterns
+
+```{r, echo=T,message=T,warning=F}
+# Simulate random point patterns using a Poisson process
+set.seed(seed=55)
+Z <- as.im(function(x,y){100 * sqrt(x+y)}, unit.square())
+pp <- rpoispp(Z)
+plot(pp)
+#### the density depends on the population density, so the Poisson is related to the population
+```
+
+##### Homogeneous point process: the points have no spatial preference.  This is also related to the null hypothesis of complete spatial randomness.
+
+##### Independence: information about outcome in one region has no influence on the outcome in other regions.  
+
+
+##### One-dimensional summaries:
+
+##### quadrat count: bin the point process and estimate the counts in each bin
+
+```{r, echo=T,message=T,warning=F}
+# Using the simulated Poisson point process above
+
+Q3 <- quadratcount(pp,nx=3,ny=3) ### the number of the rows and cols
+plot(Q3)
+print(Q3)
+```
+
+##### Intensity: rate at which events occur in the point process.  A constant intensity means that the process is homogeneous.  Alternatively, the intensity could depend on the location.
+
+
+##### Ways of estimating intensity
+
+###### Convert the quadrat counts
+
+```{r, echo=T,message=T,warning=F}
+# Using the simulated Poisson point process above
+intensity(Q3)
+```
+
+###### Nonparametric estimator (like lowess)
+
+```{r, echo=T,message=T,warning=F}
+# Using the Colorado data a spacial version of lowess
+tmp <- density(X,sigma=1)    ### note that sigma is an important parameter
+plot(tmp)
+```
+
+###### sigma is referred to as a bandwidth, and the question arises as to how to pick the bandwidth.  We'll use the CvL criterion for picking the bandwidth
+
+```{r, echo=T,message=T,warning=F}
+# Using the Colorado data
+bwo <- bw.CvL(X)   
+tmp <- density(X,sigma=bwo)
+plot(tmp)
+
+# Create a map of the standard error for the intensity
+dse <- density(X,sigma=bwo,se=TRUE)$SE
+plot(dse)
+```
+
+##### Exploration of dependence of intensity and mark
+
+##### One simple approach is to look at events defined by each level of the mark and to plot intensities of the subset of those events.  For example, here we plot the spatial distribution of the non-HCA (hca == 0) and HCA facilities (hca == 1).  
+
+```{r, echo=T,message=T,warning=F}
+# Using the Colorado data
+intensity(X.m)
+
+plot(density(split(X.m)))
+```
+
+##### An alternative approach would be to estimate a nonparametric intensity function using a Diggle correction: 
+
+```{r, echo=T,message=T,warning=F}
+# Using the Colorado data
+plot(relrisk(X.m,diggle=T))
+```

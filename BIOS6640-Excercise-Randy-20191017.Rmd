@@ -1,0 +1,209 @@
+---
+title: "10 Non standard evaluation"
+author: "Randy"
+date: "10/15/2019"
+output: html_document
+---
+10 Non standard evaluation
+
+10.1 Capturing expressions
+```{r}
+g <- function(x) deparse(substitute(x))
+g(a + b + c + d + e + f + g + h + i + j + k + l + m +
+  n + o + p + q + r + s + t + u + v + w + x + y + z)
+
+g("a + b + c + d + e + f + g + h + i + j + k + l + m +
+  n + o + p + q + r + s + t + u + v + w + x + y + z")
+
+deparse_without_cutoff <- function(x){
+  paste0(deparse(substitute(x)), collapse ="")
+}
+deparse_without_cutoff(a + b + c + d + e + f + g + h + i + j + k + l + m +
+  n + o + p + q + r + s + t + u + v + w + x + y + z)
+deparse_without_cutoff("a + b + c + d + e + f + g + h + i + j + k + l + m +
+  n + o + p + q + r + s + t + u + v + w + x + y + z")
+
+```
+
+```{r}
+gsub("\\s+", " ", paste0(deparse(substitute(a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + p + q + r + s + t + u + v + w + x + y + z))))
+```
+```{r}
+# spaces are unified
+substitute(1 + 1  + 1   + 1)
+#> 1 + 1 + 1 + 1
+quote(1 + 1  + 1   + 1)
+#> 1 + 1 + 1 + 1
+
+# leading zeros in numeric input are trimmed
+substitute(01)
+#> [1] 1
+quote(01)
+#> [1] 1
+```
+
+```{r}
+?gsub
+as.Date.default
+pairwise.t.test
+```
+
+```{r}
+d=1
+pairwise.t.test(2, d+d+d+d+d+d+d+d+d+d+d+d+d+d+d+d+d)
+```
+
+```{r}
+substitute
+?.Primitive
+f <- function(x) substitute(x) 
+g <- function(x) deparse(f(x)) 
+g(1:10)                             # -> x
+g(x)                                # -> x
+g(x + y ^ 2 / z + exp(a * sin(b)))  # -> x
+
+
+f <- function(x) substitute(x, env = parent.frame()) 
+g <- function(x) deparse(f(x)) 
+g(1:10)                             # -> 1:10
+g(x)                                # -> x
+g(x + y ^ 2 / z + exp(a * sin(b)))  # -> x + y ^ 2 / z + exp(a * sin(b))
+```
+
+```{r}
+a <- quote(quote(quote(quote(2+2))))
+eval(quote(quote(a)))
+eval(eval(quote(quote(a))))
+eval(quote(a))
+eval
+.Internal
+list2env
+subset
+methods(subset)
+getAnywhere(subset.data.table)
+eval
+```
+
+
+10.2 Non standard evaluation in subset
+```{r}
+eval(quote(eval(quote(eval(quote(2 + 2))))))        # -> 4
+eval(eval(quote(eval(quote(eval(quote(2 + 2)))))))  # -> 4
+a<-quote(eval(quote(eval(quote(eval(quote(2 + 2))))))) 
+eval(a)
+quote(a)
+
+```
+
+```{r}
+subset2 <- function(x, condition) {
+  condition_call <- substitute(condition)
+  r <- eval(condition_call, x)
+  x[r, ]
+}
+
+sample_df <- data.frame(a = 1:5, b = 5:1, c = c(5, 3, 1, 4, 1))
+subset2(sample_df, a>=3)
+
+sample_df2 <- data.frame(x = 1:10)
+subset2(sample_df2, x > 8)
+#> [1]  9 10
+`[`
+
+subset3 <- function(x, condition) {
+  condition_call <- substitute(condition)
+  r <- eval(condition_call, x)
+  x[r, , drop = FALSE] 
+}
+subset3(sample_df2, x > 8)
+getAnywhere(subset)
+methods(subset)
+?subset
+```
+```{r}
+subset3 <- function(x, condition) {
+  condition_call <- quote(condition)
+  r <- eval(condition_call, x)
+  x[r, , drop = FALSE] 
+}
+subset3(sample_df2, x > 8)
+subset.default
+```
+```{r}
+sample_df <- data.frame(a = 1:5, b = 5:1, c = c(5, 3, 1, 4, 1))
+sample_df
+x <- 4
+y <- 4
+condition <- 4
+condition_call <- 4
+subset2(sample_df, a == 4)
+subset2(sample_df, a == x)
+subset2(sample_df, a == y)
+subset2(sample_df, a == condition)
+subset2(sample_df, a == condition_call)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+++
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,188 @@
+---
+title: "Functions"
+author: "Debashis Ghosh"
+date: "9/10/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = FALSE) ## we do not want spaces here!!! otherwise it will not run.
+```
+# Programming styles and functions
+
+## Good Programming Practices
+
+All files involving code in R should be saved with
+the .R suffix.    
+If files need to be run in sequence prefix them with 
+numbers (e.g., 0-setup.R, 1-preprocess.R, 2-mainanalysis.R).  
+
+1. Other style tips:  
+    + Use lower case  
+    + Use nouns for variables and verbs for functions  
+    + Use names that are concise  
+    + Avoid using variable names that are names of 
+predefined functions in R
+
+2. Spacing:  
+    + Put spaces before and after infix functions for cleaner representation.
+    + Exceptions involve colons.
+    + Place a space before left parentheses with the exception of a function call (e.g., **mean(x)**)
+    + Extra spacing is not required but is useful if it improves alignment of lines
+
+# Example of infix
+```{r, echo=T, message=F, warning=FALSE}
+a <- 3
+b <- 4
+a+b
+
+# Infix operator
+ `+` (a,b)
+```
+
+3. Curly braces:
+    + Typically used to separate lines of code that are conditional (e.g. a function)
+    + The curly brace usually follows a conditional (on the same line), and code following it should be on a new line that is indented
+    + The closing curly brace goes on a line by itself that is not indented 
+    + Sometimes it can be OK to put code on one line if the statement/command is short
+    
+# Example
+```{r, echo=T, message=F, warning=FALSE}
+# R requires the argument and keep the function parameters. alpha has a default value as long as you run it once.
+bonffun <-  function(pvals, alpha = 0.95) {
+  # compute the length of hte pvalue vector
+  # note: pvals is a required argument
+  n <-  length(pvals)
+  
+    
+  critical <- function(n, alpha){
+    #a function inside of function
+    tmp <- alpha/n
+    return(tmp)
+  }
+  
+  # compute the adjusted critical value for the Bonferroni adjustment
+  crit <-  alpha/n
+  # compute the number of pvalues less than the adjusted critical value
+  nrej <-  sum(pvals = crit)
+
+  
+## crit exists inside of the function, we can not get it in the environment.
+  ## keywords are in the program colored.
+  return(list(nrej=nrej, alpha=alpha, crvalue=crit)) 
+## coreponding to the nrej, because the nrej could be rewrite into other value. 
+}
+
+```
+```{r}
+pvals <- runif(1000)
+bonffun(pvals)
+a <- bonffun(pvals)
+?lm ## there are more than one method, but we just select the default method. we can choose many different values for the default value.
+```
+  
+4. Other good practices:
+    + Keep text to 80 characters per line
+    + For indentation, use two spaces and not tabs (one exception, for a function
+if multiple lines are needed for the arguments)
+    + Comment your code using the \# command
+
+5. Functions:  
+    + One of the key tools in any programming language (as well as R)
+    + ``To understand everything that happens in R, two concepts are helpful:
+    + **everything that exists is an object, and everything that happens in R is a function call" (J. Chambers)** J. Chambers is the author of S language.
+    + A function is an object as well
+    + Most functions in R have three parts:
+      + The code inside the function, accessed by **body()**
+      + The list of arguments that controls how you call the function, accessible using **formals()**
+      + The map of the location of the function's variables, accessible using **environment()**
+      + Can also use the **print()** function to get these
+ 
+# Examples
+```{r, echo=T, message=F, warning=FALSE}
+`+`(4, ('+'(4, 4)))
+`+`(4, 4)
+"+"(4, 4)
+'+'(4, 4)
+
+x <- rnorm(100)
+mean(x)
+body(mean)
+formals(mean)
+print(mean)
+mean
+
+```
+
+6. Primitive Functions
+    + Primitive functions contain no R code and only call C code
+    + Can check using the **is.primitive()** function
+    + Rule that apply to most functions in R may not apply to primitive functions
+```{r}
+is.primitive(mean)
+is.primitive(`+`); is.primitive('+'); is.primitive("+")
+is.function(mean); is.function('+');
+```
+    
+7. Scoping  
+    + Set of rules that govern how R looks up the value of symbol.
+    + Understanding scoping allows for building tools by composingfunctions as well as overrulling the usual evaluation rules and doing **non-standard evaluation**  
+    + Two types of scoping: **lexical scoping** and **dynamic scoping**
+    + dynamic scoping, once the argument is done, it get removed from the environment. lexical scoping will find the value from the environment, so just remember to remove the arguments from the environment.
+    + Lexical scoping looks up symbols based on the the nesting structure of functions when they were **created**, not called.  
+    + Some principles behind lexical scoping in R:
+      + Name masking
+      + A fresh start
+      + Dynamic lookup
+```{r}
+dumb <- function(a){
+  return(x)
+}
+a<-1
+dumb(a)
+
+remove(x)
+dumb(a)
+```
+
+8. Name masking
+    + Basic idea:   When a function is called, R looks inside the functions for all the variables to be properly defined.  If they are not, R will look up one level.
+    + Can generalize to functions that are nested within functions
+    + Same rules apply to **closures**, functions created by other functions.
+    
+# Examples of nesting/scoping
+
+```{r, echo=T, message=F, warning=FALSE}
+x <- 100
+# Define a function with a variable x inside
+multiply <- function(a,b) {
+  x <- a*b
+  return(x)
+} # x is nested in the function; when the call of function is done, the x value is back to the environment value.
+multiply(3,4)
+x
+```
+
+
+```{r, echo=T, message=F, warning=FALSE}
+x <- 100
+# Define a function with a variable x inside
+dumb <- function(a) {
+  return(x)
+}
+a <- 1
+dumb(a)
+```
+
+
+9. Fresh Start
+  + Repeated call of a function does not change the value of the variables inside the function
+  + What happens is that R creates a new environment each time the the function is called, and this environment is not saved by default.  
+  
+10. Dynamic lookup
+  + In general, we want to write **self-contained** functions (mostly)
+  + By mistake, it is possible for functions to not be self-contained in the way we want and to still execute
+without an error message
+  + Can use **codetools::findGlobals()** to diagnose the ``self-containedness'' of your function.
+

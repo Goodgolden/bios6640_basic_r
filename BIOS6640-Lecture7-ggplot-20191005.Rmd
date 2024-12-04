@@ -1,0 +1,172 @@
+---
+title: "ggplot tutorial in R"
+author: "Debashis Ghosh"
+date: "10/2/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background on ggplot
+
+ggplot works with dataframes and not individual vectors. All the data needed to make the plot is typically be contained within the dataframe supplied to the ggplot() itself or can be supplied to respective geoms.
+
+
+Key idea: overlay
+
+ggplot() creates a coordinate system that you can add layers to. The first argument of ggplot() is the dataset to use in the graph. So ggplot(data = mpg) creates an empty graph, but it’s not very interesting so I’m not going to show it here.
+
+You complete your graph by adding one or more layers to ggplot(). The function geom_point() adds a layer of points to your plot, which creates a scatterplot. ggplot2 comes with many geom functions that each add a different type of layer to a plot.
+
+
+## A simple scatterplot
+
+```{r, echo=TRUE}
+library(ggplot2)
+ggplot(midwest, aes(x=area, y=poptotal)) + geom_line() 
+ggplot(midwest, aes(x=area, y=poptotal)) + geom_point()
+ggplot(midwest, aes(x=area, y=poptotal)) + geom_point() + geom_line()
+```
+
+
+```{r echo=TRUE}
+options(scipen=999)  # turn-off scientific notation like 1e+48
+library(ggplot2)
+theme_set(theme_bw())  # pre-set the bw theme.
+data("midwest", package = "ggplot2")
+
+# Scatterplot
+gg <- ggplot(midwest, aes(x=area, y=poptotal)) + 
+  geom_point(aes(col=state, size=popdensity)) + 
+  geom_smooth(method="loess", se=TRUE) + 
+  xlim(c(0, 0.1)) + 
+  ylim(c(0, 500000)) + 
+  labs(subtitle="Area Vs Population", 
+       y="Population", 
+       x="Area", 
+       title="Scatterplot", 
+       caption = "Source: midwest")
+?color
+?labs
+plot(gg)
+```
+
+
+## Counts Chart
+The second option to overcome the problem of data points overlap is to use what is called a counts chart. Whereever there is more points overlap, the size of the circle gets bigger.
+
+```{r, echo=F}
+data(mpg, package="ggplot2")
+
+# Scatterplot
+theme_set(theme_bw())  # pre-set the bw theme.
+g <- ggplot(mpg, aes(cty, hwy))
+g2 <- g + geom_count(col="tomato3", show.legend=F) +
+  labs(subtitle="mpg: city vs highway mileage", 
+       y="hwy", 
+       x="cty", 
+       title="Counts Plot")
+str(g)
+class(g)
+plot(g2)
+```
+
+
+
+# Tufte Boxplot
+Tufte box plot, provided by ggthemes package is inspired by the works of Edward Tufte. Tufte’s Box plot is just a box plot made minimal and visually appealing.
+
+```{r,echo=TRUE}
+#install.packages("ggthemes")
+library(ggthemes)
+library(ggplot2)
+theme_set(theme_tufte())  # from ggthemes
+
+# plot
+g <- ggplot(mpg, aes(manufacturer, cty))
+g + geom_tufteboxplot() + 
+      theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+      labs(title="Tufte Styled Boxplot", 
+           subtitle="City Mileage grouped by Class of vehicle",
+           caption="Source: mpg",
+           x="Class of Vehicle",
+           y="City Mileage")
+attributes(g)
+typeof(g)
+is.object(g) && !isS4(g)
+```
+
+
+## Violin Plot
+A violin plot is similar to box plot but shows the density within groups. Not much info provided as in boxplots. It can be drawn using geom_violin().
+
+```{r,echo=TRUE}
+library(ggplot2)
+theme_set(theme_bw())
+
+# plot
+g <- ggplot(mpg, aes(class, cty))
+g2 <- g + geom_violin() + 
+  labs(title="Violin plot", 
+       subtitle="City Mileage vs Class of vehicle",
+       caption="Source: mpg",
+       x="Class of Vehicle",
+       y="City Mileage")
+plot(g2)
+```
+
+## Dot + Box Plot
+On top of the information provided by a box plot, the dot plot can provide more clear information in the form of summary statistics by each group. The dots are staggered such that each dot represents one observation. So, in below chart, the number of dots for a given manufacturer will match the number of rows of that manufacturer in source data.
+
+```{r,echo=TRUE}
+g <- ggplot(mpg, aes(manufacturer, cty))
+g + geom_boxplot() + 
+  geom_dotplot(binaxis='y', 
+               stackdir='center', 
+               dotsize = .5, 
+               fill="red") +
+  theme(axis.text.x = element_text(angle=65, vjust=0.6)) + 
+  labs(title="Box plot + Dot plot", 
+       subtitle="City Mileage vs Class: Each dot represents 1 row in source data",
+       caption="Source: mpg",
+       x="Class of Vehicle",
+       y="City Mileage") 
+g + geom_boxplot()
+```
+
+## Pie Chart
+```{r,echo=T}
+library(ggplot2)
+theme_set(theme_classic())
+
+# Source: Frequency table
+df <- as.data.frame(table(mpg$class))
+colnames(df) <- c("class", "freq")
+pie <- ggplot(df, aes(x = "", y=freq, fill = factor(class))) + 
+  geom_bar(width = 1, stat = "identity") +
+  theme(axis.line = element_blank(), 
+        plot.title = element_text(hjust=0.5)) + 
+  labs(fill="class", 
+       x=NULL, 
+       y=NULL, 
+       title="Pie Chart of class", 
+       caption="Source: mpg")
+
+pie + coord_polar(theta = "y", start=0)
+
+# Source: Categorical variable.
+# mpg$class
+pie <- ggplot(mpg, aes(x = "", fill = factor(class))) + 
+  geom_bar(width = 1) +
+  theme(axis.line = element_blank(), 
+        plot.title = element_text(hjust=0.5)) + 
+  labs(fill="class", 
+       x=NULL, 
+       y=NULL, 
+       title="Pie Chart of class", 
+       caption="Source: mpg")
+  
+pie + coord_polar(theta = "y", start=0)
+```

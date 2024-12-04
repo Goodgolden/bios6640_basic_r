@@ -1,0 +1,180 @@
+---
+title: "Functions, Part II"
+author: "Debashis Ghosh"
+date: "9/16/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+mtcars[0, ]; mtcars[, 0]; mtcars[0]; mtcars[[0]]
+```
+
+**A reminder**: R functions are objects in their own right, a language property often called “first-class functions”.   The act of naming a function (e.g., foo <- function() {} ) technically creates a function object and binds it to the name **foo**.
+
+1. If you choose not to give a function a name, you get an **anonymous** function. 
+
+```{r echo=T, message=F, warning=FALSE}
+lapply(mtcars, function(x) length(unique(x)))
+lapply(mtcars, function(x) unique(x))
+lapply(mtcars, function(x) sort(unique(x)))
+?unique()
+```
+
+
+2. Fresh Start
+  + Repeated call of a function does not change the value of the variables inside the function.  
+  
+```{r echo=T, message=FALSE, warning=FALSE}
+g11 <- function() {
+  if (!exists("a")) {
+    a <- 1
+  } else {
+    a <- a + 1
+  }
+  a
+}
+# "!" means does not exist.
+# a variable in the last line, is the object returned.
+# if there are two different values, we have to build a list.
+g11()
+remove(a)
+a <- 101
+g11()
+remove(a)
+# avoid coding hungover, 
+# avoid the side effect; clean the environment after use the name.
+g12 <- function() {
+      a <- a + 1
+  a
+}
+a <- 101
+g12()
+remove(a)
+
+g13 <- function(a) {
+      a <- a + 1
+  a;a;a;a+1;a
+}
+g13(101)
+
+g14 <- function(a) {
+      a <- a + 1
+  a
+}
+g13(101)
+```
+  + What happens is that R creates a new environment each time the the function is called, and this environment is not saved by default.  
+  
+3. Dynamic lookup
+  + In general, we want to write **self-contained** functions (mostly)
+  + By mistake, it is possible for functions to not be self-contained in the way we want and to still execute
+without an error message
+  + Can use **codetools::findGlobals()** to diagnose the ``self-containedness'' of your function.
+
+
+```{r echo=T, message=F, warning=FALSE}
+addone <- function() x + 1
+x <- 3.1
+addone()
+codetools::findGlobals(addone)
+remove(x)
+codetools::findGlobals(addone)
+
+addone.1 <- function() {
+  x <- 101
+  x <- x + 1
+  x
+}
+addone.1()
+codetools::findGlobals(addone)
+# it does not matter whether the x exist in the environment, just looking for potential x in the system.
+```
+
+4. Lazy Evaluation
+
+In R, function arguments are evaluated only if they are accessed; this is referred to as **lazy evaluation**.   The data structure that allows for lazy evaluation is called a **promise**.  The promise is a data structure (think list) that consists of three components:
+  + An expression;
+  + An environment where the expression should be evaluated;
+  + A value, which is computed and cached the first time a promise is accessed when the expression  is evaluated in the specified environment. 
+  
+  the argument is also a objects
+  
+Thanks to lazy evaluation, default values can be defined in terms of other arguments, or even in terms of variables defined later in the function.
+
+5.  ... (dot-dot-dot)
+
+Functions can have a special argument ... (pronounced dot-dot-dot). With it, a function can take any number of additional arguments. In other programming languages, this type of argument is often called varargs (short for variable arguments), and a function that uses it is said to be variadic.
+
+You can also use ... to pass those additional arguments on to another function.
+
+**arguments only work when it is called in the funciton**
+
+```{r echo=T, message=F, warning=FALSE}
+mean
+mean.default
+
+i01 <- function(y, z) {
+  list(y = y, z = z)
+}
+
+i02 <- function(x, ...) {
+  i01(...)
+}
+## stop is the function to stop where the function goes and print out the result.
+## || this the or function in R; 
+str(i02(x = 1, y = 2, z = 3))
+```
+
+Using ... comes with two downsides:
+**the ... makes the code unreadable, just put the argument in the function**
+
+  + When you use it to pass arguments to another function, you have to carefully explain to the user where those arguments go. This makes it hard to understand what you can do with functions like lapply() and plot().
+
+  + A misspelled argument will not raise an error. This makes it easy for typos to go unnoticed.
+  
+  
+6. Function forms:
+Function calls come in four varieties:
+
+  +**prefix**: the function name comes before its arguments, like foofy(a, b, c). These constitute of the majority of function calls in R.
+
+  +**infix**: the function name comes in between its arguments, like x + y. Infix forms are used for many mathematical operators, and for user-defined functions that begin and end with %. it is calling a prefix function, in fact.
+
+  +replacement: functions that replace values by assignment, like names(df) <- c("a", "b", "c"). They actually look like prefix functions.
+
+  +special: functions like [[, if, and for. While they don’t have a consistent structure, they play important roles in R’s syntax.
+```{r}
+names( mtcars )
+names( mtcars ) <- as.character( seq(1:11) ); names( mtcars)
+remove( mtcars )
+```
+
+7. Functionals: input a function, returns a vector;
+"for loop is slow to run" people will use the functional
+lapply, sapply, tapply. ... apply as a list sequentially or parallel. R is quicker than C. 
+```{r echo=T, message=F, warning=FALSE}
+#install.packages("purrr")
+library(purrr)
+## dependency on other packages except the one we need to use; sometimes built for different R version.
+triple <- function(x) x * 3
+map(1:3, triple)
+?map ## map() gives a list. then we can do it parallel
+
+(1:3)*3 # this is a vector not a list
+
+# map_int() always returns a integer vector
+n_unique <- function(x) length(unique(x))
+map_int(mtcars, n_unique)
+
+map_dbl(mtcars, function(x) length(unique(x)))
+## there are about 18 map function in R
+# reduce() takes a vector of length n and produces a vector of length 1 by calling a function with a pair of values at a time: reduce(1:4, f) is equivalent to f(f(f(1, 2), 3), 4)
+
+set.seed(101)
+l <- map(1:4, ~ sample(1:10, 15, replace = T))
+l
+str(l) ## triple for loop
+reduce(l, intersect) # what is the number show up in all four lists.
+?intersect ## map and reduce are more in use for "big data" set.
+```

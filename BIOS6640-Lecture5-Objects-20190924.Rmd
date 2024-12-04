@@ -1,0 +1,220 @@
+---
+title: "Objects in R"
+author: "Debashis Ghosh"
+date: "9/24/2019"
+output: html_document
+---
+
+# Objects
+  + Another key feature of any programming language
+  + One prototype: C++ (object-oriented (OO) programming)
+  + Key concepts: class and method
+  + Class defines the behavior of objects by 
+describing their attributes and relationship to other classes
+  + Methods then operate on the particular class
+  + Classes organized in a hierarchy so that if a particular method does not exist, the ``parent" of the object are found and then the method of the parent class is used (this is called **inheritance**)
+
+
+# Objects in R 
+  + S3, S4, and Reference classes (RC)
+  + S3 implements generic-function OO and is diferent from other 
+languages (e.g., C++).  Has no definition of classes
+  + S4 has more formal class definitions 
+  + Reference classes (RC) implements message-passing 
+object-oriented programming, so methods belong to classes
+not functions
+
+
+# Base types
+  + An underlying C-level types that underlie the OO systems. 
+  + Idea: for every R object, there is a C structure (struct)
+that describes how the object is stored in memory.   
+  + C structure includes contents of the object, information
+needed for memory management, and a **type**
+  + Every object is built on top of the base types.
+```{r}
+x<-sample(c("A","C","T","G"), size=1000, replace=T)
+mean(x)
+today <- Sys.Date()
+mean(today)
+```
+  
+# Encapsulation
+  + Put all the functions of initialization and functions inside a 
+  class
+  + Example: https://www.kdnuggets.com/2019/08/object-oriented-programming-data-scientists-estimator.html
+  
+  python language
+  self.a = a
+  
+# S3
+  + Oldest object system in R
+  + Most objects in the base and stat packages in R have this object type
+  + ***No strict rules for S3 class definition***
+
+```{r}
+# create a list with required components
+s <- list(name = "John", age = 21, GPA = 3.5)
+# name the class appropriately
+class(s) <- "student"
+# That's it! we now have an object of class "student"
+s
+attr(s,"class")
+attributes(s)
+```
+
+# Constructor
+  + Formal subroutine used to construct an object
+  
+```{r}
+# a constructor function for the "student" class
+student <- function(n,a,g) {
+# we can add our own integrity checks
+if(g>4 || g<0)  stop("GPA must be between 0 and 4")
+value <- list(name = n, age = a, GPA = g)
+# class can be set using class() or attr() function
+attr(value, "class") <- "student"
+value
+}
+
+s <- student("Paul", 26, 3.7)
+s <- student("John", 25, 3.6)
+#s <- student("Paul", 26, 5)
+s
+
+```
+```{r}
+## generics 
+mean.Date
+```
+
+# Functions using S3 objects
+
+  + Methods belong to functions in S3, NOT to objects
+  + Functions involving S3 will generally call the function **UseMethod()**
+  + A function like **UseMethod()** figures out the proper function to call; this is called **method dispatch**
+  + Some primitive functions don't use UseMethod();
+they instead use internal functions in C to do method dispatch.
+  + Given a class, the job of an S3 generic is to call the right S3 method.
+  + S3 methods have the structure **generic.class()**
+
+# Creating a new method and generic in S3
+
+
+```{r}
+methods(print)
+
+
+# Now, create a print method to handle the student class
+
+print.student <- function(obj) {
+cat(obj$name, "\n") ## new line operator "\n" goes to next line; otherwise all the things will be in one line.
+cat(obj$age, "years old\n") ## cat knits all the things in the () together.
+cat("GPA:", obj$GPA, "\n")
+}
+
+print(s)
+```
+
+
+```{r}
+
+# Create a generic function for getting a grade
+
+grade <- function(obj) {
+UseMethod("grade")         # Method dispatch
+}
+
+
+grade.default <- function(obj) {
+cat("This is a generic function\n")
+}
+
+grade.student <- function(obj) {
+cat("Your grade is", obj$GPA, "\n")
+}
+
+grade(s)
+```
+
+# S4 objects
+
+  + Classes have formal definitions which describe their fields and inheritance structures (parent classes)
+  + Method dispatch can be based on multiple arguments to a generic function, not just one.
+  + There is a special operator, @, for extracting slots (aka fields) from an S4 object.
+  + To identify S4 objects, one can use {\bf str()}, which will describes S4 as a "formal" class, {\bf isS4()} returns TRUE, and pryr::otype() returns "S4".
+
+# Creating new methods and generics in S4
+  + Key functions are ***setGeneric()*** (creates a new Generic) and setMethod(), which takes the name of the generic, 
+the classes the method should be associated with, 
+and a function that implements the method
+
+```{r}
+setClass("Person", representation(name = "character", age = "numeric"))
+setClass("Employee", representation(boss = "Person"), contains = "Person")
+
+paul <- new("Person",name="Paul",age=42)
+paul
+typeof(paul)
+paul@age ### attributes @ the same as the $ in the list
+paul@name
+
+## wrong <- new("Person",name="Debashis",age="42")
+## S4 is strongly typed; it is creating a new rule
+john <- new("Employee", boss = paul, name="John", age=30)
+john@boss
+john
+```
+
+
+# Reference Classes (RC)
+
+  + RC methods belong to objects, not functions
+  *** Python methods ***
+  + RC objects are mutable: the usual R copy-on-modify semantics do not apply
+  + Reference classes are implemented using R code: they are a special S4 class that wraps around a certain environment
+  + To create a new RC class, use **setRefClass()**
+  + Use **new()** in addition to the object defined by setRefClass() to create the new objects
+  + Define methods using **methods()** and inheritance using **contains()**
+  
+```{r,echo=T}
+
+Account <- setRefClass("Account",
+  fields = list(balance = "numeric"))
+  
+  a <- Account$new(balance = 100)
+a$balance
+
+b <- a
+a$balance <- 0
+
+b$balance
+
+d <- a$copy()
+
+d$balance
+
+a$balance <- 150
+
+d$balance
+
+Account <- setRefClass("Account",
+  fields = list(balance = "numeric"),
+  methods = list(
+    withdraw = function(x) {
+      balance <- balance - x
+    },
+    deposit = function(x) {
+      balance <<- balance + x ### globale assign operator
+    }
+  )
+)
+
+a <- Account$new(balance = 100); a$balance
+
+a$deposit(100)
+a$balance
+a$withdraw(300)
+a$balance
+```
+

@@ -1,0 +1,61 @@
+---
+title: "API examples"
+author: "Debashis Ghosh"
+date: "11/6/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#### RESTful = Representational state transfer.  At a high level, we make requests to websites and get responses.  The data that are returned from an API request are called the response. The format of the returned data or the response is most often in the form of plain text ‘file’ such as JSON or .csv. This is done using HTML. 
+
+#### When you send the request, the web API returns one of the following:
+
+### The data that you requested or
+### A failed to return message which tells us that something was wrong with your request.
+
+
+#### The Colorado Information Marketplace is a comprehensive data warehouse that contains a wide range of Colorado-specific open datasets available via a RESTful API called the Socrata Open Data API (SODA).
+
+
+
+```{r, include=FALSE}
+#install.packages("rjson")
+#install.packages("jsonlite")
+#install.packages("RCurl")
+library(rjson)
+library(jsonlite)
+library(RCurl)
+```
+
+
+# Get the Colorado population projection data
+```{r, include = TRUE}
+
+base_url = "https://data.colorado.gov/resource/tv8u-hswn.json?"
+full_url = paste0(base_url,"county=Denver",
+             "&$where=age between 20 and 40",
+             "&$select=year,age,femalepopulation")
+full_url <- URLencode(full_url)
+pop_proj_data_df <- fromJSON(getURL(full_url))
+head(pop_proj_data_df)
+```
+
+```{r, include = TRUE}
+library(dplyr)
+library(ggplot2)
+
+pop_proj_data_df <- pop_proj_data_df %>% select(c( "age", "year", "femalepopulation"))
+
+ggplot(pop_proj_data_df, aes(x = year, y = femalepopulation,
+ group = factor(age), color = age)) + geom_line() +
+     labs(x = "Year",
+          y = "Female Population - Age 20-40",
+          title = "Projected Female Population",
+          subtitle = "Denver, CO: 1990 - 2040") +
+  theme(axis.text.x=element_blank(),
+          axis.text.y=element_blank(),axis.ticks=element_blank())
+```

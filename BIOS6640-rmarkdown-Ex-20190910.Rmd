@@ -1,0 +1,32 @@
+---
+title: 'R Markdown Example'
+author: "Debashis Ghosh"
+date: "September 9, 2019"
+output:
+  html_document: default
+  fig_caption: yes
+  number_sections: yes
+  word_document: default
+  pdf_document: default
+---
+### Look at mtcars data. 
+the below is a R chunk
+```{r echo=F, message=TRUE, warning=FALSE}
+## the commands and the codes are not there if echo=T
+op <- par() # set plot in R
+options(width=165)
+emptyenv() # enviornment with nothing inside
+rm(list=ls()) # clear all the variables
+
+library(knitr)
+
+head(mtcars)
+?options
+```
+#### Create table with average mpg by cyl.
+```{r, echo=F, message=F, warning=FALSE}
+
+tab <- as.data.frame(tapply(mtcars$mpg, mtcars$cyl, mean))
+kable(tab)
+## subsetting the in group levels
+```

@@ -1,0 +1,154 @@
+---
+title: "Subsetting Data Frames"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Recall from last time that data structures refer to how data are stored in a programming 
+language.   In R, we can classify data structures based on whether or not they contain homogeneous 
+or heterogeneous data types and the dimension of the data structure (1-dimensional, 2-dimensional or
+higher-dimensional).
+
+
+Once we have a data structure, one common operation we will want to do is to subset the data.  There are a 
+variety of methods of subsetting data in R, and they depend on the various types of data structures. 
+
+A simple example is with vectors, and something we call positional subsetting.   
+```{r mtcars}
+mpg <- as.numeric(mtcars$mpg)
+typeof(mpg)
+tmp <- mpg[8]     
+tmp2 <- mpg[-1]
+```
+
+tmp is accessing the value of the mpg vector is position 8.   One important note about R: the index of all data structures begins with 1. The index has to be between one and the length
+of the vector; otherwise, it returns an NA.  Note that for tmp2, we used a negative integer, which has the effect of dropping the first element of mpg.   We can do multiple positions, e.g., mpg[c(8,12,16)] or mpg[c(-1,-3,-19)], but we can't combine positive and negative indices.   Why?
+
+
+In most situations, we will not be able to know the exact position in a dataset of a given individual.  In those situations, a more common subsetting operation is to subset based on a logical operator.  
+
+```{r}
+mpg <- as.numeric(mtcars$mpg)
+typeof(mpg)
+mpg2 <- mpg[mtcars$am == 1]     # cars with manual transmission
+```
+
+Note that mpg2 also involves a subsetting.  The subsetting is based on the expression mtcars\$am == 1.  This is a logical comparison of the mtcars\$am object with the value 1 (note the double equal sign).  The double equal sign is also known as the logical equality operator.   All values in mtcars$am that equal 1 get the value TRUE, while those that do not get the value FALSE.   
+
+The length of mpg is 32, while that of mpg2 is 13.  Note that mpg2 is the subset of cars whose transmission is manual. In mtcars, cars either have automatic or manual transmission, and these are exclusive categories.  
+
+Note that the in mpg2, mpg is a double vector of length 32 and mtcars\$am == 1 is a logical vector of length 32.  What happens when the subsetting logical vector is of a different length than the vector being subsetted?  Hint: it's called recycling!
+
+Example code:
+mpg2 <- mpg[c(T,T,T,F,F)]
+
+
+# Subsetting a matrix:
+
+These can be subsetted using multiple vectors, a single vector
+or a matrix.  Most common way given an $n-$dimensional array: supply an
+index for each dimension, separated by a comma.
+
+```{r}
+set.seed(9119)
+x  <- matrix(rnorm(10000),500,20)
+x[3,5]
+
+dim(x)
+x[1]
+typeof(x) ## it can be a double or a matrix
+```
+
+Matrices and arrays are implemented as vectors with special attributes, they 
+can also be indexed using a vector.  Arrays in R are stored in column-major order (i.e. consecutive elements of a column are next to each other)
+
+```{r}
+set.seed(9119)
+x  <- matrix(rnorm(10000),500,20)
+x[1] ## running a function, function is the core of any language f(x) -> Y; there is a function going on here, there is argument. lazy evaluation. 
+x[1, 1]
+x[2]
+x[1,2]
+x[2,1]
+```
+
+**Subsetting data frames:**
+
+There are a few ways to access a data frame.   Can subset directly using names of variables in data frames, or as the second index in a column.  Also can use the $ operator.  
+
+data fram - list: elements are columns
+          - matrix: elements in multiple dimensions
+        
+index by m.tcars[1, j]
+```{r}
+# Compare
+mtcars["mpg"] ## strings is the vectors with the values
+?mtcars
+mtcars["hp"]
+
+row.names(mtcars); colnames(mtcars)
+typeof(row.names(mtcars)); typeof(colnames(mtcars))
+
+#versus
+```
+
+
+```{r}
+mtcars[,"mpg"] ## logical operater; simplifing and lazy evaluation
+typeof(mtcars[,"mpg"]) # simplifing
+typeof(mtcars["mpg"]) # perserving
+```
+
+```{r}
+#versus
+mtcars$mpg # lost all the names of the cars, and return to a numeric vecter.
+
+mtcars[mtcars$am == 1, "mpg"]
+mtcars[, c(1, 10, 11)]
+mtcars[c(1, 10, 11), ]
+mtcars[c(1, 10, 11)] # very strange that the results are the same of mtcars[, c(1, 10, 11)]; it has two functions.
+typeof(mtcars); typeof(mtcars[, c(1, 10, 11)]);typeof(mtcars[, c(1)])
+```
+```{r}
+str(mtcars) # R is "lazy evaluation" simplifing but not "strong typing" (the type would not change).
+
+typeof(mtcars$mpg)
+typeof(mtcars[, "mpg"]) ## typeof(mtcars$mpg) == typeof(mtcars[, "mpg"])
+mtcars[, 1]
+typeof(mtcars["mpg", ])
+typeof("mpg")
+```
+
+What data type do each of these return?
+```{r}
+mtcars[0, ]
+mtcars[0]
+mtcars[ , 0]
+```
+
+#  Subsetting: Preserving versus Simplifying
+
+When we subset an object, we are running a function on it.   One important thing to keep in mind throughout is that in R, every command we run usually consists of one or more functions.  With subsetting, the object we subset has a type, and after we perform the subsetting, the resulting object has a type.  If we want to maintain the same data type before and after, then that is called *preserving*.  If we do not, then some subset functions in R will perform a *simplification* of type.  
+
+Here are some examples of effects of simplification:
+
+1. With atomic vectors, names get removed.
+
+2. With a list, the object inside the list is returned, which will **not** be a list.
+
+3. With a factor, it drops any unused levels.
+
+4. With a matrix or array, if any of the dimensions has length 1 it drops the dimension.
+
+5. With a data frame, if the output is a single column, it returns a vector.   
+
+```{r}
+install.packages("knitr")
+```
+

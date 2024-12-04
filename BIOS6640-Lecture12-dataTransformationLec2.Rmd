@@ -1,0 +1,112 @@
+---
+title: 'Data Transformation lecture'
+author: "Debashis Ghosh"
+date: "October 22, 2019"
+output:
+  html_document: default
+  fig_caption: yes
+  number_sections: yes
+  pdf_document: default
+  word_document: default
+---
+#### This lecture is a followup from the previous one and is a deeper dive into the `tidyverse' packages in R.  Note: we are also making use of Chapter 5 of the wonderful website stat545.com.  
+
+##### We will use the `dplyr` package from `tidyverse`. 
+```{r, echo=T, message=F, warning=F}
+#install.packages("tidyverse", dependencies = T)
+library(tidyverse)
+```
+
+##### I will also use data from Gapminder at https://www.gapminder.org/data/.
+```{r, echo=F, message=F, warning=F}
+#install.packages("gapminder")
+library(gapminder)
+```
+
+#### **Adding new variables with `mutate()`**
+```{r, echo=T, message=T, warning=T}
+gapm <- gapminder
+newgap <- mutate(gapm,totgdp=pop*gdpPercap)
+newgap
+```
+
+#### Try to lag change in life expectancy for each country
+```{r, echo=T, message=T, warning=T}
+tmp <- NULL
+for (cnames in unique(as.character(gapminder$country))) {
+  cd <- filter(gapminder,country == cnames )
+  le <- select(cd,"lifeExp")   ### it is a list, so we have to unlist
+  tmp <- c(tmp,lag(unlist(le),3))
+}
+gapminder$llifeExp <- tmp
+plot(lifeExp ~ llifeExp,gapminder)
+```
+
+##### Let's say we want a quick look at aggregated statistics on a variable. One way to do this is by using: `cumsum()`, `cumprod()`, `cummin()`, `cummax()`; and `dplyr` provides `cummean()` for cumulative means.
+```{r, echo=T, message=T, warning=T}
+head(cummin(gapminder$lifeExp))
+head(cummax(gapminder$lifeExp))
+head(cummean(gapminder$lifeExp))
+```
+
+#### **Grouped summaries:** `summarize()`
+##### The `summarize()` function is very powerful. It allows us to quickly summarize variables over meaningful groups without subsetting our data first (similar to `apply()` functions).
+```{r, echo=T, message=T, warning=T}
+by_country <- group_by(gapminder, country)
+summarise(by_country, avgle = mean(lifeExp, na.rm = TRUE),avggdp 
+          = mean(gdpPercap,na.rm=T))
+```
+
+##### Combining operations with the "pipe"
+
+##### The code above requires creation of multiple new dataframes. If we use "pipe" notation, we can avoid this. The pipe notation refers to the %>% operator.  
+```{r, echo=T, message=T, warning=T}
+library(dplyr)
+newc <- gapminder %>% 
+  group_by(country) %>% 
+  summarise(
+    avgle = mean(lifeExp, na.rm = TRUE),
+    avggdp = mean(gdpPercap,na.rm=T)
+) 
+newc
+```
+
+##### Quoting from the book: "This focuses on the transformations, not what’s being transformed, which makes the code easier to read. You can read it as a series of imperative statements: group, then summarise, then filter. As suggested by this reading, a good way to pronounce %>% when reading code is “then”. Behind the scenes, `x %>% f(y)` turns into `f(x, y)`, and `x %>% f(y) %>% g(z)` turns into `g(f(x, y), z)` and so on. You can use the pipe to rewrite multiple operations in a way that you can read left-to-right, top-to-bottom. We'’'ll use piping frequently from now on because it considerably improves the readability of code, and we’ll come back to it in more detail in pipes."
+
+
+#### **Counts**
+##### It is good to keep track of the group sizes when you're aggregating. You can do this using a count. I'll use the book's flights data for this example because the weather data are purposefully of equal group sizes.
+```{r, echo=T, message=T, warning=T}
+#install.packages('nycflights13')
+library(nycflights13)
+
+not_cancelled <- flights %>% 
+  filter(!is.na(dep_delay), !is.na(arr_delay))
+
+not_cancelled %>% 
+  group_by(year, month, day) %>% 
+  summarise(mean = mean(dep_delay))
+
+delays <- not_cancelled %>% 
+  group_by(tailnum) %>% 
+  summarise(
+    delay = mean(arr_delay)
+  )
+
+ggplot(data = delays, mapping = aes(x = delay)) + 
+  geom_freqpoly(binwidth = 10)
+```
+  
+##### Some flights are delayed very long! But let's look at how many are delayed by delay time.
+```{r, echo=T, message=T, warning=T}
+delays <- not_cancelled %>% 
+  group_by(tailnum) %>% 
+  summarise(
+    delay = mean(arr_delay, na.rm = TRUE),
+    n = n()
+  )
+
+ggplot(data = delays, mapping = aes(x = n, y = delay)) + 
+  geom_point(alpha = 1/10)
+```
+

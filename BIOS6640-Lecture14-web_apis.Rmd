@@ -1,0 +1,244 @@
+---
+title: "Reading web data: Part II"
+output:
+  html_document: 
+    toc: true
+    toc_float: true
+---
+  
+Today we will cover **web APIs** in the first of two lectures on **reading data from the web**. 
+
+* We will use `tidyverse` syntax
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+
+library(tidyverse)
+theme_set(theme_bw() + theme(legend.position = "bottom"))
+```
+
+
+```{r, message = FALSE}
+library(tidyverse)
+library(rvest)
+library(httr)
+```
+
+# `tidyverse` syntax
+
+Reasons I'll be using `tidyverse` syntax
+
+* I like it
+* It's easier to read
+* `rvest` package is designed to work well with it
+* It's good to get exposure to different styles of coding
+
+### The pipe operator `%>%`
+
+The pipe operator, from the `magrittr` package, let's you chain together functions in `R`. Say you want to do a series of operations in a row. See two ways below:
+
+```{r}
+x <- c(0.109, 0.359, 0.63, 0.996, 0.515, 0.142, 0.017, 0.829, 0.907)
+
+# (1) can do this
+round(exp(diff(log(x))), 1)
+
+# (2) or this
+logx = log(x)
+diff_lx = diff(logx)
+exp_df_lx = exp(diff_lx)
+round_result = round(exp_df_lx, 1)
+```
+
+The first way is hard to read, and the second way saves intermediate variables (`logx`, `diff_lx`, ... ) you don't need.
+
+Alternatively, you could use the pipe operator:
+
+```{r}
+x %>% log() %>%
+    diff() %>%
+    exp() %>%
+    round(1)
+```
+
+### tibbles
+
+A _tibble_, or `tbl_df`, is basically just a tidyverse version of the `data.frame`. They have some nice properties that make them behave a little bit differently from a data.frame:
+
+* Doesn't automatically convert strings to factors
+* Doesn't use rownames
+* Only prints first 10 rows and number of columns you can fit on one screen:
+
+```{r}
+mtcars
+tibble(mtcars)
+```
+
+Basically, you can think about it as a dataframe with a few different properties.
+
+# Using an API
+
+New York City has a great open data resource, and we'll use that for our first couple API examples. Although most (all?) of these datasets can be accessed by clicking through a website, we'll access them directly using the API to improve reproducibility and make it easier to update results to reflect new data.
+
+## Writing a web request
+
+As a simple example, [this page](https://data.cityofnewyork.us/Environment/Water-Consumption-In-The-New-York-City/ia2d-e54m) is about a dataset for annual water consumption in NYC, along with the population in that year. 
+
+First, we'll import this as a CSV.
+
+```{r}
+nyc_water = 
+  GET("https://data.cityofnewyork.us/resource/ia2d-e54m.csv") 
+
+nyc_water
+```
+
+This returns a formatted HTTP request. `Status: 200` is an HTTP status code that means OK, the request was successful. You can see a list of status codes [here](https://httpstatuses.com/).
+
+## Extracting content
+
+`httr::content()` is an `R` function for extracting content you want from an HTTP request with the following options.
+
+* `content(as = "parsed")`: processes it into an `R` object
+* `content(as = "text")`: returns a character vector
+* `content(as = "raw")`: a raw vector of computer bytes
+
+For CSV files we can use `content(as = "parsed")` to convert the API request into a recognizeable format.See below with the NYC water example.
+
+```{r}
+nyc_water %>% content(as = "parsed")
+```
+
+We can also import this dataset as a JSON file. This takes a bit more work (and this is, really, a very easy case), but it's still doable. The function `jsonlite::fromJSON()` converts JSON data into an `R` dataframe.
+
+```{r}
+nyc_water = 
+  GET("https://data.cityofnewyork.us/resource/ia2d-e54m.json") %>% 
+  content("text") %>%
+  jsonlite::fromJSON() %>%
+  as_tibble()
+```
+
+That was an easy case. Let's look at some more examples below.
+
+## Denver API
+
+It turns out the City of Denver has it's own open data API, with over 200 datasets you can search through [here](https://www.denvergov.org/opendata).
+
+I'm interested in a dataset that provides locations of all the food stores in Denver, which is listed [here](https://data.colorado.gov/Economic-Growth/Food-Stores-in-Denver/hysf-mrke). The data is provided in both `csv` and `json` formats. 
+
+**_Learning assessment:_** Create a data frame that contains the locations of Denver food stores. How many 7-Eleven's are listed in this dataset?
+
+
+<details>
+<summary> Solution </summary>
+
+The code below shows one approach to this data cleaning and extraction process:
+
+```{r, eval = FALSE}
+denver_food = 
+  GET("https://data.colorado.gov/resource/hysf-mrke.json") %>% 
+  content("text") %>%
+  jsonlite::fromJSON() %>%
+  as_tibble()
+
+food %>% 
+  filter(store_name == "7-Eleven") %>% 
+  summarize(n())
+```
+
+There are 76 7-Eleven stores in this dataset.
+
+</details>
+
+Another resource for local datasets with a user-friendly API is the [Colorado Information Marketplace](https://data.colorado.gov/).
+
+## Passing arguments
+
+Often you can make more specific API requests by passing arguments within the request. This can be helpful when the online dataset is very large and you only want a subset of that data.
+
+As an example, we'll use a dataset from the Colorado Information Marketplace on counts of pedestrians and bicyclists at different locations in Colorado.  Code below accesses the data and parses it into a dataframe. 
+
+```{r}
+cyclists = 
+  GET("https://data.colorado.gov/resource/q2qp-xhnj.csv") %>% 
+  content("parsed") 
+
+cyclists %>%
+  distinct(location)
+```
+
+There are four locations in this dataset where pedestrians and cyclists where counted. What if you only needed information about cyclists on the Colorado Front Range Trail? You could pull all the data and then filter it in `R`.
+
+```{r}
+denver_cyclists = cyclists %>%
+  #filter(stationid == "B9013B")
+  filter(location == "Colorado Front Range Trail, Denver CO")
+```
+
+Alternatively, you could do that filtering directly through the API. Here we're filtering on station id.
+
+```{r}
+denver_cyclists = 
+  GET("https://data.colorado.gov/resource/q2qp-xhnj.csv?stationid=B9013B") %>% 
+  content("parsed") 
+
+```
+
+What if I only want data from that station and I also only want data on cyclists headed West? I can include addititonal filtering parameters.
+
+```{r}
+denver_cyclists = 
+  GET("https://data.colorado.gov/resource/q2qp-xhnj.csv?stationid=B9013B&direction=West") %>% 
+  content("parsed")
+
+```
+
+See [this resource](https://dev.socrata.com/docs/queries/) for more complicated arguments that can be passed to API requests.
+
+
+## Pokemon API
+
+Examples so far  have been pretty easy-- we accessed data that is essentially a data table, and we had a very straightforward API.
+
+To get a sense of how this becomes complicated, let's look at the [Pokemon API](https://pokeapi.co) (which is also still pretty nice).
+
+```{r}
+poke = 
+  GET("http://pokeapi.co/api/v2/pokemon/25") %>%  # Pikachu is 25
+  content()
+poke$name
+poke$height
+poke$abilities
+```
+
+To build a Pokemon dataset for analysis, you'd need to distill the data returned from the API into a useful format; iterate across all pokemon; and combine the results. 
+
+
+## Be reasonable
+
+When you're reading data from the web, remember you're accessing resources on someone else's server -- either by reading HTML or by accessing data via an API. In some cases, those who make data public will take steps to limit bandwidth devoted to a small number of users. Amazon and IMDB, for example, probably won't notice if you scrape small amounts of data but _would_ notice if you tried to read data from thousands of pages every time you knitted a document.
+
+Similarly, API developers can (and will) limit the number of database entries that can be accessed in a single request. In those cases you'd have to take some steps to iterate over "pages" and combine the results. In some cases, API developers protect themselves from unreasonable use by requiring users to be authenticated -- it's still possible to use `httr` in these cases, but we won't get into it.
+
+## Other cool datasets
+
+* [Licensed marijuana businesses](https://data.colorado.gov/Business/Licensed-Marijuana-Businesses-in-Colorado/sqs8-2un5)
+* [NASA APIs, including weather on Mars](https://api.nasa.gov/index.html)
+* [Popular baby names, from data.gov](https://catalog.data.gov/dataset/most-popular-baby-names-by-sex-and-mothers-ethnic-group-new-york-city-8c742)
+* [Yearly beer statistics by state](https://www.ttb.gov/resources/data-statistics/beer)
+
+## Other materials
+
+* Much of this material came from [Jeff Goldsmith's Data Science I class](https://p8105.com/). Check it out for more cool stuff!
+* A recent short course presented similar topics to those above; a GitHub repo for the course is [here](https://github.com/ropensci/user2016-tutorial)
+* Check out the [R file](https://github.com/tidyverse/dplyr/blob/master/data-raw/starwars.R) used to create the `starwars` dataset (in the `tidyverse`) using the [Star Wars API](https://swapi.co) (from the maker of the Pokemon API).
+* Some really helpful R packages are wrappers for APIs -- `rtweet` is a fun example.
+
+
+
